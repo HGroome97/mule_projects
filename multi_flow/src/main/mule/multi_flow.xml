@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<mule xmlns:http="http://www.mulesoft.org/schema/mule/http" xmlns="http://www.mulesoft.org/schema/mule/core"
+	xmlns:doc="http://www.mulesoft.org/schema/mule/documentation"
+	xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://www.mulesoft.org/schema/mule/core http://www.mulesoft.org/schema/mule/core/current/mule.xsd
+http://www.mulesoft.org/schema/mule/http http://www.mulesoft.org/schema/mule/http/current/mule-http.xsd">
+	<http:listener-config name="HTTP_Listener_config" doc:name="HTTP Listener config" doc:id="ee925d04-d0a4-4ca1-a51c-6bc68af5c852" >
+		<http:listener-connection host="0.0.0.0" port="8084" />
+	</http:listener-config>
+	<flow name="get_flow" doc:id="9eb65c43-9e14-445b-85c3-b83aefd0e84b" >
+		<http:listener doc:name="Listener" doc:id="27c0ef09-779e-4beb-a76f-7681cb72e50f" config-ref="HTTP_Listener_config" path="/process" allowedMethods="GET">
+		</http:listener>
+		<set-payload value='#[message.attributes.method ++ " " ++ message.attributes.queryParams.N as String ++ " lives in " ++ message.attributes.queryParams.C as String]' doc:name="Set Payload" doc:id="e1b1f97a-9be6-46f5-a2e4-3fb185ee1759" mimeType="text/html"/>
+	</flow>
+	<flow name="post_flow" doc:id="30c99858-541e-4294-bb83-2dce5b37f08d" >
+		<http:listener doc:name="Listener" doc:id="049b8ded-34ae-4d9c-b6ad-3739064d1e32" config-ref="HTTP_Listener_config" path="/process" allowedMethods="POST"/>
+		<set-payload doc:name="Set Payload" doc:id="ddbc289c-22b9-4dc9-a4f9-d79b4c10e98b" mimeType="text/html" value='#[message.attributes.method ++ " " ++ message.payload.N as String ++ " lives in " ++ message.payload.C as String]'/>
+	</flow>
+</mule>

@@ -1,0 +1,100 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<mule xmlns:ee="http://www.mulesoft.org/schema/mule/ee/core" xmlns:http="http://www.mulesoft.org/schema/mule/http"
+	xmlns="http://www.mulesoft.org/schema/mule/core"
+	xmlns:doc="http://www.mulesoft.org/schema/mule/documentation" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://www.mulesoft.org/schema/mule/core http://www.mulesoft.org/schema/mule/core/current/mule.xsd
+http://www.mulesoft.org/schema/mule/http http://www.mulesoft.org/schema/mule/http/current/mule-http.xsd
+http://www.mulesoft.org/schema/mule/ee/core http://www.mulesoft.org/schema/mule/ee/core/current/mule-ee.xsd">
+	<http:listener-config name="HTTP_Listener_config" doc:name="HTTP Listener config" doc:id="cf9faf81-b187-4ad2-b907-16e6c85e7630" >
+		<http:listener-connection host="0.0.0.0" port="8087" />
+	</http:listener-config>
+	<flow name="get_flow" doc:id="7a60eb1c-f027-4c94-819b-146f8d3b8783" >
+		<http:listener doc:name="Listener" doc:id="0941f35d-fe5b-45fc-a871-368e6db8b807" config-ref="HTTP_Listener_config" path="/maths" allowedMethods="GET" />
+		<set-variable value="#[message.attributes.queryParams.op]" doc:name="Set Operation" doc:id="7a534ac2-5c58-4d34-89e1-83ee4c845a78" variableName="operation" />
+		<set-variable value="#[message.attributes.queryParams.num1 as Number]" doc:name="Set First Number" doc:id="79bf3130-887a-48e4-986a-45e69a6d7fbb" variableName="num1" />
+		<set-variable value="#[message.attributes.queryParams.num2 as Number]" doc:name="Set Second Number" doc:id="f3e5881a-7575-4e9b-a18f-8df3de26b465" variableName="num2" />
+		<choice doc:name="Choice" doc:id="7f59152b-b82a-4048-be95-b2b6056c14b3" >
+			<when expression='#[vars.operation=="add"]'>
+				<set-variable value='#["" ++ (vars.num1 + vars.num2)]' doc:name="Set Sum" doc:id="5af9fd4a-888c-4571-891d-5b249e639ad2" variableName="result"/>
+			</when>
+			<when expression='#[vars.operation=="sub"]'>
+				<set-variable value='#["" ++ (vars.num1 - vars.num2)]' doc:name="Set Sub" doc:id="7eb04d40-15b7-4f3f-8b83-13905131a93a" variableName="result" />
+			</when>
+			<when expression='#[vars.operation=="mult"]' >
+				<set-variable value='#["" ++ (vars.num1 * vars.num2)]' doc:name="Set Mult" doc:id="7f425cba-15e9-4080-b37a-18357fd940fe" variableName="result"/>
+			</when>
+			<when expression='#[vars.operation=="div"]'>
+				<choice doc:name="Choice" doc:id="17bc07c9-160a-4b21-b953-12c1876d4dbd" >
+					<when expression="#[vars.num2==0]">
+						<set-variable value="Can't divide by 0" doc:name="Set 0 error" doc:id="b66735fa-4cae-4df1-aba5-77b29087d60c" variableName="result" />
+						<set-variable value="true" doc:name="Set Error" doc:id="6eaf8b72-5dbf-4add-91f2-ed00c7854a46" variableName="error"/>
+					</when>
+					<otherwise >
+						<set-variable value='#["" ++ (vars.num1 / vars.num2)]' doc:name="Set Div" doc:id="1a41db3b-6e64-420a-bfc6-71944a79537c" variableName="result"/>
+					</otherwise>
+				</choice>
+			</when>
+			<otherwise>
+				<set-variable value='Invalid Operator' doc:name="Set not found error" doc:id="4a00b58f-43c3-4ac1-acce-790fa3c3e84a" variableName="result" />
+				<set-variable value="true" doc:name="Set Error" doc:id="631bf3a8-debc-425a-a89b-a998cc6effc2" variableName="error" />
+			</otherwise>
+		</choice>
+		<set-payload value='#[vars.result]' doc:name="Set Payload" doc:id="09af3a42-f187-44f7-91b3-4ce22e4a3042" mimeType="text/html" />
+		<ee:transform doc:name="Transform Message" doc:id="4bc37581-a785-4f0b-82e9-7d5c744f3a7b" >
+			<ee:message >
+				<ee:set-payload ><![CDATA[%dw 2.0
+output application/json
+
+var operation = vars.operation as String
+fun even(result, error) =
+ if(not (error =="true"))
+ 	if((result as Number mod 2) == 0)
+ 		"True"
+ 	else
+ 		"False"
+ else
+ 	"Can't calculate due to error"
+	
+---
+{
+	"Operation":operation,
+	"First input":vars.num1 as String,
+	"Second input":vars.num2 as String,
+	"Result":vars.result as String,
+	"Even": even(vars.result, vars.error)
+}]]></ee:set-payload>
+			</ee:message>
+		</ee:transform>
+	</flow>
+	<flow name="post_flow" doc:id="d71d6846-5742-4b4f-9c81-55f8d0af7fd5" >
+		<http:listener doc:name="Listener" doc:id="94e7ce8e-8f0c-4e76-b13e-8323a5540cce" config-ref="HTTP_Listener_config" path="/maths" allowedMethods="POST" />
+		<set-variable value="#[message.payload.op]" doc:name="Set Operation" doc:id="db48b63b-346f-46d2-a8e4-267de4847885" variableName="operation" />
+		<set-variable value="#[message.payload.num1 as Number]" doc:name="Set First Number" doc:id="3a890242-7fb5-4ed5-b709-70f7aa96ca7e" variableName="num1" />
+		<set-variable value="#[message.payload.num2 as Number]" doc:name="Set Second Number" doc:id="6e3b9177-0e66-442e-94b0-972f547409cf" variableName="num2" />
+		<choice doc:name="Choice" doc:id="4d2cd531-51cf-4b7d-807c-5669b9a0b530" >
+			<when expression='#[vars.operation=="add"]' >
+				<set-variable value='#["Sum is " ++ (vars.num1 + vars.num2)]' doc:name="Set Sum" doc:id="785cda7a-9ab4-4da6-867b-7cd7dccab16b" variableName="result" />
+			</when>
+			<when expression='#[vars.operation=="sub"]' >
+				<set-variable value='#["Sub is " ++ (vars.num1 - vars.num2)]' doc:name="Set Sub" doc:id="23cef468-0743-4913-8a65-9a563ecf6412" variableName="result" />
+			</when>
+			<when expression='#[vars.operation=="mult"]' >
+				<set-variable value='#["Mult is " ++ (vars.num1 * vars.num2)]' doc:name="Set Mult" doc:id="af31629f-ab26-409c-87b4-3fcc50ebd91f" variableName="result" />
+			</when>
+			<when expression='#[vars.operation=="div"]' >
+				<choice doc:name="Choice" doc:id="209500c4-9c44-48d4-ae68-33eb5142af89" >
+					<when expression="#[vars.num2==0]" >
+						<set-variable value="Can't divide by 0" doc:name="Set 0 error" doc:id="5f634357-1e1d-4e2f-ad3b-ab1f8276cd70" variableName="result" />
+					</when>
+					<otherwise >
+						<set-variable value='#["Div is " ++ (vars.num1 / vars.num2)]' doc:name="Set Div" doc:id="cbb08cee-5000-489d-b663-58b54abda697" variableName="result" />
+					</otherwise>
+				</choice>
+			</when>
+			<otherwise >
+				<set-variable value="Invalid Operator" doc:name="Set not found error" doc:id="37547c3a-654b-4f39-b850-7a7e87288898" variableName="result" />
+			</otherwise>
+		</choice>
+		<set-payload value="#[vars.result]" doc:name="Set Payload" doc:id="7825aa6d-ef5f-4165-8ae4-b25c53ddb95b" mimeType="text/html" />
+	</flow>
+</mule>
