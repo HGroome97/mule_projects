@@ -1,0 +1,168 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<mule xmlns:email="http://www.mulesoft.org/schema/mule/email"
+	xmlns:file="http://www.mulesoft.org/schema/mule/file" xmlns:ee="http://www.mulesoft.org/schema/mule/ee/core"
+	xmlns:db="http://www.mulesoft.org/schema/mule/db"
+	xmlns:http="http://www.mulesoft.org/schema/mule/http" xmlns="http://www.mulesoft.org/schema/mule/core" xmlns:doc="http://www.mulesoft.org/schema/mule/documentation" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="
+http://www.mulesoft.org/schema/mule/db http://www.mulesoft.org/schema/mule/db/current/mule-db.xsd http://www.mulesoft.org/schema/mule/core http://www.mulesoft.org/schema/mule/core/current/mule.xsd
+http://www.mulesoft.org/schema/mule/http http://www.mulesoft.org/schema/mule/http/current/mule-http.xsd
+http://www.mulesoft.org/schema/mule/ee/core http://www.mulesoft.org/schema/mule/ee/core/current/mule-ee.xsd
+http://www.mulesoft.org/schema/mule/file http://www.mulesoft.org/schema/mule/file/current/mule-file.xsd
+http://www.mulesoft.org/schema/mule/email http://www.mulesoft.org/schema/mule/email/current/mule-email.xsd">
+	<http:listener-config name="HTTP_Listener_config" doc:name="HTTP Listener config" doc:id="448f3b8f-fe27-4442-89a0-9747833e0873" >
+		<http:listener-connection host="0.0.0.0" port="8081" />
+	</http:listener-config>
+	<db:config name="Database_Config" doc:name="Database Config" doc:id="af48ecee-8514-47b0-a219-305991834785" >
+		<db:my-sql-connection host="localhost" port="3306" user="new" database="test"/>
+	</db:config>
+	<file:config name="File_Config" doc:name="File Config" doc:id="e4bc766b-a13e-4b0e-b3dd-04d478245754" >
+		<file:connection workingDir="C:\Users\Administrator\Documents\Test File Save" />
+	</file:config>
+	<flow name="testdbFlow" doc:id="331e8f7d-7261-4e6e-948f-79af04510754" >
+		<http:listener doc:name="Listener" doc:id="6144093d-504e-4fc7-aae7-dbd7191ac033" config-ref="HTTP_Listener_config" path="/search" allowedMethods="GET"/>
+		<db:select doc:name="Select" doc:id="7adea9d5-5008-4354-b6c2-48a2b94dc9ef" config-ref="Database_Config">
+			<db:sql >select * from product where name = :name and sid = :sid</db:sql>
+			<db:input-parameters><![CDATA[#[{
+	'name' : attributes.queryParams.name,
+	'sid': attributes.queryParams.sid
+}]]]></db:input-parameters>
+		</db:select>
+		<ee:transform doc:name="Transform Message" doc:id="2589cb97-15e7-41f0-923a-0a4b07858297" >
+			<ee:message >
+				<ee:set-payload ><![CDATA[%dw 2.0
+output application/json
+---
+message.payload]]></ee:set-payload>
+			</ee:message>
+		</ee:transform>
+	</flow>
+	<flow name="testdbFlow1" doc:id="7b70c5d5-c773-4e39-a270-962e8d531317" >
+		<http:listener doc:name="Listener" doc:id="b41a40a9-693f-46d6-90d7-e9b3b36ce5d4" config-ref="HTTP_Listener_config" path="/add" allowedMethods="POST"/>
+		<set-variable value="#[message.payload.pid]" doc:name="Set pid" doc:id="890ad7bf-0661-4c2f-84db-0b5592e79c61" variableName="pid"/>
+		<set-variable value="#[message.payload.sid]" doc:name="Set Variable" doc:id="6037b1ff-766b-467a-b648-b0cb33a9efdf" variableName="sid"/>
+		<set-variable value="#[message.payload.name]" doc:name="Set Name" doc:id="f252404f-56c5-4d3b-bb6f-53684e0c8fa1" variableName="name"/>
+		<db:select doc:name="Select" doc:id="dc64d8e6-23a5-4e0c-bf6b-f3f900574118" config-ref="Database_Config">
+			<db:sql>select * from product where pid = :pid</db:sql>
+			<db:input-parameters><![CDATA[#[{
+	'pid': vars.pid
+}]]]></db:input-parameters>
+		</db:select>
+		<ee:transform doc:name="Transform Message" doc:id="8381a247-3072-455c-8630-b012f1049c5f">
+			<ee:message>
+				<ee:set-payload><![CDATA[%dw 2.0
+output application/json
+---
+{
+	"out":message.payload
+}]]></ee:set-payload>
+			</ee:message>
+		</ee:transform>
+		<set-variable value="#[sizeOf(message.payload.out)]" doc:name="Set Variable" doc:id="cadc852f-dc51-4afd-b4de-9bfd5aa7e94d" variableName="return_size"/>
+		<choice doc:name="Choice" doc:id="8e2c55ee-0073-497c-9786-e0c53500a4f8" >
+			<when expression="#[vars.return_size == 0]" >
+				<db:insert doc:name="Insert" doc:id="9b873b97-e863-4fb0-9585-f4a2ba939b91" config-ref="Database_Config" >
+					<db:sql >insert into product values (:pid, :sid, :name)</db:sql>
+					<db:input-parameters ><![CDATA[#[{
+	'name' : vars.name,
+	'sid': vars.sid,
+	'pid': vars.pid
+}]]]></db:input-parameters>
+				</db:insert>
+				<ee:transform doc:name="Transform Message" doc:id="3e6b3be3-90f6-4a1c-b96d-22790ca3d66e" >
+					<ee:message >
+						<ee:set-payload ><![CDATA[%dw 2.0
+output application/json
+---
+{
+	"output":vars.name ++ " ADDED SUCCESSFULLY"
+}]]></ee:set-payload>
+					</ee:message>
+				</ee:transform>
+			</when>
+			<otherwise >
+				<db:update doc:name="Update" doc:id="a8726c60-208a-408d-b993-67fc877f3aa5" config-ref="Database_Config">
+					<db:sql >UPDATE product
+SET sid = :sid, name= :name
+WHERE pid = :pid;</db:sql>
+					<db:input-parameters ><![CDATA[#[{
+	'name' : vars.name,
+	'sid': vars.sid,
+	'pid': vars.pid
+}]]]></db:input-parameters>
+				</db:update>
+				<ee:transform doc:name="Transform Message" doc:id="2e1e78ed-e598-4a45-90f1-9361b04e75a0" >
+					<ee:message >
+						<ee:set-payload ><![CDATA[%dw 2.0
+output application/json
+---
+{
+	"output":vars.pid ++ " updated SUCCESSFULLY"
+}]]></ee:set-payload>
+					</ee:message>
+				</ee:transform>
+			</otherwise>
+		</choice>
+	</flow>
+	<flow name="testdbFlow2" doc:id="c282021f-29b5-4961-a310-4e734c35b205" >
+		<http:listener doc:name="Listener" doc:id="8c960ad4-2b5a-46ee-a0c4-b6fe0f5a6a52" config-ref="HTTP_Listener_config" path="/delete" allowedMethods="POST" />
+		<set-variable value="#[message.payload.pid]" doc:name="Set Name" doc:id="70daf53a-3237-4a1e-bfd2-90782139ba96" variableName="pid" />
+		<db:delete doc:name="Delete" doc:id="f16c32f4-35cb-4119-a2f1-825e391d7b03" config-ref="Database_Config">
+			<db:sql >delete from product where pid = :pid</db:sql>
+			<db:input-parameters ><![CDATA[#[{
+	'pid': message.payload.pid
+}]]]></db:input-parameters>
+		</db:delete>
+		<ee:transform doc:name="Transform Message" doc:id="cdbb7bf2-0b37-4a26-a999-0c53de5ae0a1" >
+			<ee:message >
+				<ee:set-payload ><![CDATA[%dw 2.0
+output application/json
+---
+{
+	"output": "id: " ++ vars.pid ++ " SUCCESSFULLY DELETED"
+}]]></ee:set-payload>
+			</ee:message>
+		</ee:transform>
+	</flow>
+	<flow name="getalltestdbFlow" doc:id="00e902e1-5abf-4a23-b570-8268bbaae083" >
+		<http:listener doc:name="Listener" doc:id="a7085cfe-559c-480d-b008-afa30532507b" config-ref="HTTP_Listener_config" path="/getAll" allowedMethods="GET" />
+		<try doc:name="Copy_of_Try" doc:id="76991642-86db-4f4d-9f4c-6356f5a21163">
+			<db:select doc:name="Select" doc:id="3927b4c6-419b-4f1d-a206-99a536bc2c0e" config-ref="Database_Config">
+			<db:sql>select * from product</db:sql>
+		</db:select>
+			<error-handler>
+				<on-error-continue enableNotifications="true" logException="true" doc:name="Copy_of_On Error Continue" doc:id="d9dae207-c962-43ee-8fe5-4685b9d312d7" type="DB:CONNECTIVITY">
+					<ee:transform doc:name="Copy_of_Copy_of_Transform Message" doc:id="a2ba5e86-4477-4574-b800-cecca61f5b52">
+						<ee:message>
+							<ee:set-payload><![CDATA[%dw 2.0
+output application/json
+
+---
+"error":"DB connection error occured during runtime	"
+
+]]></ee:set-payload>
+						</ee:message>
+					</ee:transform>
+				</on-error-continue>
+			</error-handler>
+		</try>
+		<file:write doc:name="Write" doc:id="f8f1b1b5-252a-4d94-9090-60d1a3032e34" config-ref="File_Config" path='#["testfile" ++ now().day ++ "-" ++ now().month ++ "-" ++ now().year ++ ".txt"]'>
+			<file:content><![CDATA[#[%dw 2.0
+output application/json
+---
+{
+	"output":message.payload
+}]]]></file:content>
+		</file:write>
+		<ee:transform doc:name="Transform Message" doc:id="cd76fa5a-d58c-49ae-a2d2-2bdc85d95fb9" >
+			<ee:message >
+				<ee:set-payload ><![CDATA[%dw 2.0
+output application/json
+
+---
+payload
+
+]]></ee:set-payload>
+			</ee:message>
+		</ee:transform>
+	</flow>
+</mule>

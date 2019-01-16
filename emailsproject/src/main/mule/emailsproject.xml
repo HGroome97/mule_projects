@@ -1,0 +1,143 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<mule xmlns:ee="http://www.mulesoft.org/schema/mule/ee/core" xmlns:db="http://www.mulesoft.org/schema/mule/db"
+	xmlns:http="http://www.mulesoft.org/schema/mule/http"
+	xmlns="http://www.mulesoft.org/schema/mule/core" xmlns:doc="http://www.mulesoft.org/schema/mule/documentation" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://www.mulesoft.org/schema/mule/core http://www.mulesoft.org/schema/mule/core/current/mule.xsd
+http://www.mulesoft.org/schema/mule/http http://www.mulesoft.org/schema/mule/http/current/mule-http.xsd
+http://www.mulesoft.org/schema/mule/db http://www.mulesoft.org/schema/mule/db/current/mule-db.xsd
+http://www.mulesoft.org/schema/mule/ee/core http://www.mulesoft.org/schema/mule/ee/core/current/mule-ee.xsd">
+	<http:listener-config name="HTTP_Listener_config" doc:name="HTTP Listener config" doc:id="ff49c0b7-48f3-41fb-8282-f22a5cc558a9" >
+		<http:listener-connection host="0.0.0.0" port="8081" />
+	</http:listener-config>
+	<db:config name="Database_Config" doc:name="Database Config" doc:id="f1edc618-957d-4237-9f3c-789822075687" >
+		<db:my-sql-connection host="localhost" port="3306" user="root" database="email" />
+	</db:config>
+	<http:request-config name="HTTP_Request_configuration" doc:name="HTTP Request configuration" doc:id="b33cb148-f06f-4c08-92f5-8aa7e15e8570">
+		<http:request-connection host="localhost" port="8082" />
+	</http:request-config>
+	<flow name="createAccount" doc:id="7dfcd6fe-cf81-4774-9cc5-4c54f0581976" >
+		<http:listener doc:name="Listener" doc:id="e1995aee-0a64-4b4f-aa6a-e76b73cd40a8" config-ref="HTTP_Listener_config" path="/createAccount" allowedMethods="POST"/>
+		<set-variable value="#[message.payload.username]" doc:name="Set Username" doc:id="341e2c7c-81df-4d8e-9816-f67528ecf16e" variableName="username"/>
+		<set-variable value="#[message.payload.password]" doc:name="Set Password" doc:id="57320335-7a50-4799-b904-26a4f9b76251" variableName="password" />
+		<http:request method="POST" doc:name="Request" doc:id="9238035b-d2ed-43f4-8bf4-401505a5253c" config-ref="HTTP_Request_configuration" path="/users/createUser"/>
+		<ee:transform doc:name="Transform Message" doc:id="ace72bbf-950e-44fa-8267-608e2044648f" >
+			<ee:message >
+				<ee:set-payload ><![CDATA[%dw 2.0
+output application/json
+---
+{
+	"response":vars.username ++ " added successfully"
+}]]></ee:set-payload>
+			</ee:message>
+		</ee:transform>
+	</flow>
+	<flow name="allEmails" doc:id="7e7766e2-8155-449e-996a-90f5fdeca23c" >
+		<http:listener doc:name="Listener" doc:id="c39be601-e5a8-46ef-b6ab-14c661fc2e6b" config-ref="HTTP_Listener_config" path="/allEmails"/>
+		<http:request method="GET" doc:name="Request" doc:id="e51e36ce-2160-44b3-80de-db3423f9c849" config-ref="HTTP_Request_configuration" path="/emails/getAllEmails" />
+		<ee:transform doc:name="Transform Message" doc:id="99dc81d4-cc55-4666-955d-18a51d073771" >
+			<ee:message >
+				<ee:set-payload ><![CDATA[%dw 2.0
+output application/json
+---
+payload]]></ee:set-payload>
+			</ee:message>
+		</ee:transform>
+	</flow>
+	<flow name="login" doc:id="3aba1ec6-a5d4-42ca-b283-1c1ebbedc5f9" >
+		<http:listener doc:name="Listener" doc:id="87c8e7fb-9c2b-4966-85dc-022bf64a6957" config-ref="HTTP_Listener_config" path="login" allowedMethods="POST"/>
+		<set-variable value="#[message.payload.username]" doc:name="Set Username" doc:id="035106e9-d57f-499e-8584-c8a6d90315fb" variableName="username" />
+		<set-variable value="#[message.payload.password]" doc:name="Set Password" doc:id="3bed82d1-b926-400f-b185-2182005f5fe2" variableName="password" />
+		<http:request method="POST" doc:name="Request" doc:id="b0a5b3a8-7257-4cd5-9494-0bae4a21a8d8" config-ref="HTTP_Request_configuration" path="/users/login"/>
+		<ee:transform doc:name="Transform Message" doc:id="6873ef19-d3ec-4af3-940a-6a21e4dd91ea" >
+			<ee:message >
+				<ee:set-payload ><![CDATA[%dw 2.0
+output application/json
+---
+{
+	"out":message.payload
+}]]></ee:set-payload>
+			</ee:message>
+		</ee:transform>
+		<set-variable value="#[sizeOf(message.payload.out)]" doc:name="Set Output Size" doc:id="0a7be63b-0fe1-4719-8e52-18dd8f611a00" variableName="return_size" />
+		<choice doc:name="Choice" doc:id="0d4f4312-4f09-4759-87f2-08b4b59159d2" >
+			<when expression="#[vars.return_size == 0]">
+				<ee:transform doc:name="Transform Message" doc:id="004c7fb5-7b0f-484a-a4ce-41922f8b3b1e">
+					<ee:message>
+						<ee:set-payload><![CDATA[%dw 2.0
+output application/json
+---
+{
+	"output":"INVALID USERNAME OR PASSWORD"
+}]]></ee:set-payload>
+					</ee:message>
+				</ee:transform>
+			</when>
+			<otherwise>
+				<ee:transform doc:name="Transform Message" doc:id="1c4a4914-e6a3-4137-80b9-938585985f62" >
+					<ee:message >
+						<ee:set-payload ><![CDATA[%dw 2.0
+output application/json
+---
+{
+	"output":vars.username ++ " login successful"
+}]]></ee:set-payload>
+					</ee:message>
+				</ee:transform>
+			</otherwise>
+		</choice>
+	</flow>
+	<flow name="specificEmail" doc:id="6c5742a0-7b60-41fa-b8de-438b78ebc589" >
+		<http:listener doc:name="Listener" doc:id="93eede6c-508f-4bcc-a1e8-e5859abfcae9" config-ref="HTTP_Listener_config" path="/specificEmail" />
+		<set-variable value="#[message.attributes.queryParams.emailId]" doc:name="Set Email ID" doc:id="97779754-7ba4-47d9-92de-2ab1767ad3d8" variableName="id" />
+		<http:request method="GET" doc:name="Request" doc:id="3c2b4d49-6362-4e9d-b08c-0d2fce9d40c5" config-ref="HTTP_Request_configuration" path='#["/emails/getEmail/" ++ vars.id]' />
+		<ee:transform doc:name="Transform Message" doc:id="38d0f412-252e-4d18-be70-909f3b215543" >
+			<ee:message >
+				<ee:set-payload ><![CDATA[%dw 2.0
+output application/json
+---
+payload]]></ee:set-payload>
+			</ee:message>
+		</ee:transform>
+	</flow>
+	<flow name="sendEmail" doc:id="396c0964-e4c5-4008-a65d-e494ba4ab028" >
+		<http:listener doc:name="Listener" doc:id="1f2881f3-ceae-47f7-8fcf-5a21057aa716" config-ref="HTTP_Listener_config" path="/sendEmail" />
+		<set-variable value="#[message.payload.to1]" doc:name="Set Recipient" doc:id="ae822d64-1747-4c31-be46-7595eecd1817" variableName="recipient" />
+		<http:request method="POST" doc:name="Request" doc:id="54ed2dc1-2bed-4a34-b756-c1b856615e93" config-ref="HTTP_Request_configuration" path="/emails/sendEmail" />
+		<ee:transform doc:name="Transform Message" doc:id="1be16903-8286-416d-87a6-220cc3e1098a" >
+			<ee:message >
+				<ee:set-payload ><![CDATA[%dw 2.0
+output application/json
+---
+{
+	"response":"email sent to " ++ vars.recipient 
+}]]></ee:set-payload>
+			</ee:message>
+		</ee:transform>
+	</flow>
+	<flow name="deleteEmail" doc:id="90da9755-b797-4c27-a9d1-70a0e20d436c" >
+		<http:listener doc:name="Listener" doc:id="adee697f-33cc-4123-8b22-bb3b7a6710b0" config-ref="HTTP_Listener_config" path="/deleteEmail" />
+		<set-variable value="#[message.attributes.queryParams.emailId]" doc:name="Set Email ID" doc:id="da378009-6a13-4996-bbcb-ec3d623ec75e" variableName="id" />
+		<http:request method="GET" doc:name="Request" doc:id="27140545-4306-4fdf-a515-47f0f834c4da" config-ref="HTTP_Request_configuration" path='#["/emails/deleteEmail/" ++ vars.id]' />
+		<ee:transform doc:name="Transform Message" doc:id="a06c07b7-17e3-437e-afba-dba51bf668af" >
+			<ee:message >
+				<ee:set-payload ><![CDATA[%dw 2.0
+output application/json
+---
+payload]]></ee:set-payload>
+			</ee:message>
+		</ee:transform>
+	</flow>
+	<flow name="markEmailRead" doc:id="2bf61d2c-c925-4554-bc96-7517fe237a56" >
+		<http:listener doc:name="Listener" doc:id="37f28e98-1d7f-44de-9b61-6ae4ab273133" config-ref="HTTP_Listener_config" path="/markEmailRead" />
+		<set-variable value="#[message.attributes.queryParams.emailId]" doc:name="Set Email ID" doc:id="7f6c7a73-a79f-4560-a2bf-c471b5ce637d" variableName="id" />
+		<http:request method="GET" doc:name="Request" doc:id="7db71c73-9e5c-4b31-a91b-fb7b49d76993" config-ref="HTTP_Request_configuration" path='#["/emails/markEmailRead/" ++ vars.id]' />
+		<ee:transform doc:name="Transform Message" doc:id="33db8eb2-7a6f-41db-b063-78aa5cb2ee4c" >
+			<ee:message >
+				<ee:set-payload ><![CDATA[%dw 2.0
+output application/json
+---
+payload]]></ee:set-payload>
+			</ee:message>
+		</ee:transform>
+	</flow>
+</mule>

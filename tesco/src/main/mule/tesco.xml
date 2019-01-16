@@ -1,0 +1,74 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<mule xmlns:ee="http://www.mulesoft.org/schema/mule/ee/core" xmlns:file="http://www.mulesoft.org/schema/mule/file"
+	xmlns:db="http://www.mulesoft.org/schema/mule/db"
+	xmlns:http="http://www.mulesoft.org/schema/mule/http" xmlns="http://www.mulesoft.org/schema/mule/core" xmlns:doc="http://www.mulesoft.org/schema/mule/documentation" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://www.mulesoft.org/schema/mule/core http://www.mulesoft.org/schema/mule/core/current/mule.xsd
+http://www.mulesoft.org/schema/mule/http http://www.mulesoft.org/schema/mule/http/current/mule-http.xsd
+http://www.mulesoft.org/schema/mule/db http://www.mulesoft.org/schema/mule/db/current/mule-db.xsd
+http://www.mulesoft.org/schema/mule/file http://www.mulesoft.org/schema/mule/file/current/mule-file.xsd
+http://www.mulesoft.org/schema/mule/ee/core http://www.mulesoft.org/schema/mule/ee/core/current/mule-ee.xsd">
+	<http:listener-config name="HTTP_Listener_config" doc:name="HTTP Listener config" doc:id="338e3df4-56e6-47b0-93df-682ced00f939" >
+		<http:listener-connection host="0.0.0.0" port="8081" />
+	</http:listener-config>
+	<db:config name="Database_Config" doc:name="Database Config" doc:id="054084ce-4b86-49e8-bd54-d134432ffc33" >
+		<db:my-sql-connection host="localhost" port="3306" user="new" database="test" />
+	</db:config>
+	<flow name="getalltestdbFlow" doc:id="75d68ed3-7c76-4113-b614-91b98d8645a2" >
+		<http:listener doc:name="Listener" doc:id="02e19fd8-c76a-452a-b064-8f164c5fd9ed" config-ref="HTTP_Listener_config" path="/getAllCat" allowedMethods="GET" />
+		<db:select doc:id="b667bcab-18ff-4250-aced-b7753cbe8c15" config-ref="Database_Config" doc:name="Select">
+			<db:sql>select title from categories group by title</db:sql>
+		</db:select>
+		<try doc:name="Try" doc:id="fb8088a0-2344-463b-b469-f5977046a2ff">
+			<ee:transform doc:name="Transform Message" doc:id="517ad2c4-92dd-4d35-8c57-2755bfef1145">
+			<ee:message>
+				<ee:set-payload><![CDATA[%dw 2.0
+output application/json
+
+---
+payload
+
+]]></ee:set-payload>
+			</ee:message>
+		</ee:transform>
+			<error-handler >
+				<on-error-continue enableNotifications="true" logException="true" doc:name="On Error Continue" doc:id="6351086d-df88-4541-a1e8-5d70dbbead38" type="ANY">
+					<ee:transform doc:name="Copy_of_Transform Message" doc:id="146315cd-63fd-4fea-a9a9-526e77637ef6" >
+						<ee:message >
+							<ee:set-payload ><![CDATA[%dw 2.0
+output application/json
+
+---
+"error":"error has occured"
+
+]]></ee:set-payload>
+						</ee:message>
+					</ee:transform>
+				</on-error-continue>
+			</error-handler>
+		
+		</try>
+	</flow>
+	<flow name="Copy_of_getalltestdbFlow" doc:id="5ddcdaa4-6c67-4979-9be6-3025ac339ccd" >
+		<http:listener doc:name="Copy_of_Listener" doc:id="67451ea4-8071-493d-86bb-14702c1c146f" config-ref="HTTP_Listener_config" path="/getSubCat" allowedMethods="POST" />
+		<db:select doc:name="Copy_of_Select" doc:id="ea136571-dadb-43b7-8993-a0e5fe5923f9" config-ref="Database_Config" >
+			<db:sql >select cid from categories where title = :title</db:sql>
+			<db:input-parameters ><![CDATA[#[{"title":message.payload.categories}]]]></db:input-parameters>
+		</db:select>
+		<set-variable value="#[message.payload[0].cid]" doc:name="Set Variable" doc:id="c6866405-360c-41da-9a27-d67c30a19b0d" variableName="cid"/>
+		<db:select doc:name="Copy_of_Copy_of_Select" doc:id="44957fc7-cbda-49ed-ab54-a51e5ba57ae1" config-ref="Database_Config">
+			<db:sql>select title from subcategories where cid = :cid</db:sql>
+			<db:input-parameters><![CDATA[#[{"cid":vars.cid}]]]></db:input-parameters>
+		</db:select>
+		<ee:transform doc:name="Copy_of_Transform Message" doc:id="66187b88-8daa-4fe9-909d-8bd0ded0971d" >
+			<ee:message >
+				<ee:set-payload ><![CDATA[%dw 2.0
+output application/json
+
+---
+payload
+
+]]></ee:set-payload>
+			</ee:message>
+		</ee:transform>
+	</flow>
+</mule>

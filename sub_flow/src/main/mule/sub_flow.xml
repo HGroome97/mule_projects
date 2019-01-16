@@ -1,0 +1,135 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<mule xmlns:ee="http://www.mulesoft.org/schema/mule/ee/core" xmlns:http="http://www.mulesoft.org/schema/mule/http"
+	xmlns="http://www.mulesoft.org/schema/mule/core"
+	xmlns:doc="http://www.mulesoft.org/schema/mule/documentation" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://www.mulesoft.org/schema/mule/core http://www.mulesoft.org/schema/mule/core/current/mule.xsd
+http://www.mulesoft.org/schema/mule/http http://www.mulesoft.org/schema/mule/http/current/mule-http.xsd
+http://www.mulesoft.org/schema/mule/ee/core http://www.mulesoft.org/schema/mule/ee/core/current/mule-ee.xsd">
+	<http:listener-config name="HTTP_Listener_config" doc:name="HTTP Listener config" doc:id="7c845125-784f-4dec-a9f4-8fa79d779bec" >
+		<http:listener-connection host="0.0.0.0" port="8091" />
+	</http:listener-config>
+	<sub-flow name="add_sub_Flow" doc:id="9f6561ad-2a1e-41c8-90ae-89c593f4d00a" >
+		<set-variable value='#["" ++ (vars.num1 as Number + vars.num2 as Number)]' doc:name="Set Sum" doc:id="126a79cf-d343-4ba8-9ff9-0b9b76083a65" variableName="result" />
+		<set-payload value="#[vars.result]" doc:name="Set Payload" doc:id="37c110c8-c194-4af7-9559-d5e6d39a2f0e" />
+	</sub-flow>
+	<sub-flow name="sub_sub_Flow" doc:id="0bc80102-3ea8-4b9a-b850-4ac700b35471">
+		<set-variable value='#["" ++ (vars.num1 as Number - vars.num2 as Number)]' doc:name="Set Sum" doc:id="0a86a7ce-4918-49e8-8b7b-d65f37d90557" variableName="result" />
+		<set-payload value="#[vars.result]" doc:name="Set Payload" doc:id="d6689a40-34b8-4659-9d42-0751e2aac643" />
+	</sub-flow>
+	<sub-flow name="mult_sub_Flow" doc:id="909f6e40-70cd-471c-830a-21909f5129b9">
+		<set-variable value='#["" ++ (vars.num1 as Number * vars.num2 as Number)]' doc:name="Set Sum" doc:id="6bb02f49-305b-420f-ab98-5abbd24d1a8f" variableName="result" />
+		<set-payload value="#[vars.result]" doc:name="Set Payload" doc:id="95fa61e1-644f-4eb0-a2aa-c7191125a21b" />
+	</sub-flow>
+	<sub-flow name="div_sub_Flow" doc:id="0cbfb10f-e1c2-49e6-bd9f-b23c2e72a0a0">
+		<set-variable value='#["" ++ (vars.num1 as Number / vars.num2 as Number)]' doc:name="Set Sum" doc:id="cb7e7967-f85a-4dc6-8eb2-cefc3dec65f9" variableName="result" />
+		<set-payload value="#[vars.result]" doc:name="Set Payload" doc:id="aa162a55-fb9b-4fa7-9f84-c129edd88d37" />
+	</sub-flow>
+	<sub-flow name="choice_Sub_Flow" doc:id="0e484114-fc18-4fc1-8e0a-7feb8d303781" >
+		<choice doc:name="Choice" doc:id="ca85455f-4835-451e-8b0d-10b4b6c2ca0f">
+			<when expression='#[vars.operation=="sub"]'>
+				<flow-ref doc:name="Sub Sub flow" doc:id="54fff199-2b73-490b-8cf7-812f5f7f154b" name="sub_sub_Flow" />
+			</when>
+			<when expression='#[vars.operation=="mult"]'>
+				<flow-ref doc:name="Mult Sub flow" doc:id="87c89946-461a-4301-a098-6201d59babef" name="mult_sub_Flow" />
+			</when>
+			<when expression='#[vars.operation=="div"]'>
+				<choice doc:name="Choice" doc:id="d9960e91-c07f-49a8-8f1d-3f7853afd01a">
+					<when expression="#[vars.num2==0]">
+						<set-variable value="Can't divide by 0" doc:name="Set 0 error" doc:id="56fd6be0-dff3-47bf-96a9-cf470cbad4d3" variableName="result" />
+						<set-variable value="true" doc:name="Set Error" doc:id="aa086e0c-3016-417f-820c-4f3154f68e40" variableName="error" />
+					</when>
+					<otherwise>
+						<flow-ref doc:name="Div Sub flow" doc:id="5bf42cbf-bcfe-4fab-8f05-730e03621065" name="div_sub_Flow" />
+					</otherwise>
+				</choice>
+			</when>
+			<when expression='vars.operation=="add"'>
+				<flow-ref doc:name="Add Sub flow" doc:id="f43782f9-6894-424b-9a19-e40145cc5330" name="add_sub_Flow" />
+			</when>
+			<otherwise>
+				<set-variable value="Invalid Operator" doc:name="Set not found error" doc:id="3e765cb1-6aae-4399-b3e0-2d4b6f9f6e9f" variableName="result" />
+				<set-variable value="true" doc:name="Set Error" doc:id="78cec1a5-1aa3-4c07-84f6-ae140293c7aa" variableName="error" />
+			</otherwise>
+		</choice>
+		<set-payload value="#[vars.result]" doc:name="Set Payload" doc:id="00d0d757-431a-4cf2-9197-a7ef0f3fee21" mimeType="text/html" />
+	</sub-flow>
+	<flow name="get_flow" doc:id="9a479b32-89dd-4de5-81ba-5f771431ed93" >
+		<http:listener doc:name="Listener" doc:id="da3813f5-a357-4f9b-bafa-86fc37b13725" config-ref="HTTP_Listener_config" path="/maths" allowedMethods="GET" />
+		<set-variable value="#[message.attributes.queryParams.op]" doc:name="Set Operation" doc:id="7dc0bae2-6f93-43c7-be35-aa1446c101ef" variableName="operation" />
+		<set-variable value="#[message.attributes.queryParams.num1 as Number]" doc:name="Set First Number" doc:id="6017d177-f71d-4cfc-846b-36e5f4606b5c" variableName="num1" />
+		<set-variable value="#[message.attributes.queryParams.num2 as Number]" doc:name="Set Second Number" doc:id="2008855d-38ca-47cd-93fa-e8a63b45c82a" variableName="num2" />
+		<flow-ref doc:name="Choice" doc:id="ba522abe-6838-48c5-a5f6-8434a567c213" name="choice_Sub_Flow"/>
+		<ee:transform doc:name="Transform Message" doc:id="4fcb9783-ab4d-4773-8178-4913604851f6" >
+			<ee:message >
+				<ee:set-payload ><![CDATA[%dw 2.0
+output application/json
+
+var operation = vars.operation as String
+fun even(result, error) =
+ if(not (error =="true"))
+ 	if((result as Number mod 2) == 0)
+ 		"True"
+ 	else
+ 		"False"
+ else
+ 	"Can't calculate due to error"
+	
+---
+{
+	"Operation":operation,
+	"First input":vars.num1 as String,
+	"Second input":vars.num2 as String,
+	"Result":vars.result as String,
+	"Even": even(vars.result, vars.error)
+}]]></ee:set-payload>
+			</ee:message>
+		</ee:transform>
+	</flow>
+	<flow name="post_flow" doc:id="10d35335-bac9-4920-9e89-8cfb3407ccdc" >
+		<http:listener doc:name="Listener" doc:id="186f5f90-3647-4a46-98f9-3a217e00bba6" config-ref="HTTP_Listener_config" path="/maths" allowedMethods="POST" />
+		<set-variable value="#[message.payload.op]" doc:name="Set Operation" doc:id="b7da010d-bc40-4bfe-ae79-029663636b15" variableName="operation" />
+		<set-variable value="#[message.payload.num1 as Number]" doc:name="Set First Number" doc:id="6375bed0-d61f-4641-8f95-15b3a7349b5d" variableName="num1" />
+		<set-variable value="#[message.payload.num2 as Number]" doc:name="Set Second Number" doc:id="96564d68-682b-4569-8d7f-efb1703f492a" variableName="num2" />
+		<flow-ref doc:name="Choice" doc:id="697d8105-e86c-4ece-9c57-6961b4d46d85" name="choice_Sub_Flow" />
+		<http:request method="GET" doc:name="Request" doc:id="cb98e626-4c03-435e-99ec-78fb7d01be86" url="http://localhost:8091/randomNumGen" outputMimeType="application/json"/>
+		<set-variable value="#[message.payload.random]" doc:name="Set From Request" doc:id="cb34c9e1-23ab-4631-ab37-65895cb127a8" variableName="random"/>
+		<ee:transform doc:name="Transform Message" doc:id="feb2a899-6f75-4d2e-81f9-4065796b7d29" >
+			<ee:message >
+				<ee:set-payload ><![CDATA[%dw 2.0
+output application/json
+
+var operation = vars.operation as String
+fun even(result, error) =
+ if(not (error =="true"))
+ 	if((result as Number mod 2) == 0)
+ 		"True"
+ 	else
+ 		"False"
+ else
+ 	"Can't calculate due to error"
+	
+---
+{
+	"Operation":operation,
+	"First input":vars.num1 as String,
+	"Second input":vars.num2 as String,
+	"Result":vars.result as String,
+	"Even": even(vars.result, vars.error),
+	"random":vars.random
+}]]></ee:set-payload>
+			</ee:message>
+		</ee:transform>
+	</flow>
+	<flow name="RandomNumberGenerator" doc:id="024a0133-52dd-4c37-b7bd-b9e351c6b56e" >
+		<http:listener doc:name="Listener" doc:id="618778b7-cbe7-48d0-9970-313c0558da6b" config-ref="HTTP_Listener_config" path="/randomNumGen"/>
+		<ee:transform doc:name="Transform Message" doc:id="7e540cf2-0b56-430a-8ef3-1b32db2cb4ab" >
+			<ee:message >
+				<ee:set-payload ><![CDATA[%dw 2.0
+output application/json
+var randomNum = round(random() * 1000) 
+---
+random:randomNum]]></ee:set-payload>
+			</ee:message>
+		</ee:transform>
+	</flow>
+</mule>

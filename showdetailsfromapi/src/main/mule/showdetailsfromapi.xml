@@ -1,0 +1,52 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<mule xmlns:ee="http://www.mulesoft.org/schema/mule/ee/core" xmlns:http="http://www.mulesoft.org/schema/mule/http"
+	xmlns="http://www.mulesoft.org/schema/mule/core"
+	xmlns:doc="http://www.mulesoft.org/schema/mule/documentation" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://www.mulesoft.org/schema/mule/core http://www.mulesoft.org/schema/mule/core/current/mule.xsd
+http://www.mulesoft.org/schema/mule/http http://www.mulesoft.org/schema/mule/http/current/mule-http.xsd
+http://www.mulesoft.org/schema/mule/ee/core http://www.mulesoft.org/schema/mule/ee/core/current/mule-ee.xsd">
+	<http:listener-config name="HTTP_Listener_config" doc:name="HTTP Listener config" doc:id="f4102919-8c83-4252-b052-74000085641a">
+		<http:listener-connection host="0.0.0.0" port="8080" />
+	</http:listener-config>
+	<flow name="showdetailsfromapiFlow" doc:id="687b7a26-3a9a-43c2-8eda-95e5bce6a374" >
+		<http:listener doc:name="Listener" doc:id="be8a656f-8910-403c-bac8-98dbba0b2539" allowedMethods="POST" config-ref="HTTP_Listener_config" path="/sort"/>
+		<set-variable value="#[message.payload.search]" doc:name="Set Variable" doc:id="15a3cbd7-34df-448c-84b5-4af5dbe77cf5" variableName="selected"/>
+		<http:request method="GET" doc:name="Request" doc:id="6b80d699-0f89-4361-87e4-e1c3306dd795" url="http://jsonplaceholder.typicode.com/posts"/>
+		<ee:transform doc:name="Transform Message" doc:id="c1155aa7-e6a0-4e5c-894d-5e49ef57ed79" >
+			<ee:message >
+				<ee:set-payload ><![CDATA[%dw 2.0
+output application/json
+---
+"$(vars.selected)": (message.payload map {
+      id: $.id,
+      properties: {
+        "$(vars.selected)": $."$(vars.selected)"
+      }
+})]]></ee:set-payload>
+			</ee:message>
+		</ee:transform>
+	</flow>
+	<flow name="showMultipleDetailsFlow" doc:id="cc5ee1c6-9c45-4628-9960-de231f071a7f">
+		<http:listener doc:name="Listener" doc:id="4ad1e3ce-9599-4c36-b4d3-db0a8cd3c03a" config-ref="HTTP_Listener_config" path="/showMulti" allowedMethods="POST" />
+		<set-variable value='#[%dw 2.0
+output application/json
+---
+[("userId") if payload.userId=="userId", ("id") if payload.id=="id", ("title") if payload.title=="title", ("body") if payload.body=="body"]]' doc:name="Set Variable" doc:id="0bead8d3-7345-40f8-b19f-01d39c1d2b29" variableName="selected" />
+		<http:request method="GET" doc:name="Request" doc:id="2502070b-a6a8-4645-b9b2-00a4c5ba6598" url="http://jsonplaceholder.typicode.com/posts" />
+		<ee:transform doc:name="Transform Message" doc:id="af58fdf4-6b1c-4a08-b3f4-f18bea785251" >
+		<ee:message>
+				<ee:set-payload><![CDATA[%dw 2.0
+output application/json
+var size = vars.selected.size
+---
+books: (message.payload map {
+        ("$(vars.selected[0])": $."$(vars.selected[0])") if vars.selected[0] != null  ,
+        ("$(vars.selected[1])": $."$(vars.selected[1])") if vars.selected[1] != null  ,
+        ("$(vars.selected[2])": $."$(vars.selected[2])") if vars.selected[2] != null  ,
+        ("$(vars.selected[3])": $."$(vars.selected[3])") if vars.selected[3] != null  
+})]]>
+</ee:set-payload>
+			</ee:message>
+		</ee:transform>
+	</flow>
+</mule>
